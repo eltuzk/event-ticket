@@ -7,8 +7,8 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
   const message = err.message || 'Internal Server Error';
 
   res.status(statusCode).json({
-    status: 'error',
-    statusCode,
+    success: false,
+    data: null,
     message
   });
 };

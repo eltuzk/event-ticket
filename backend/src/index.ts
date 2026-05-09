@@ -4,6 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { errorHandler } from './middlewares/error';
 import { AppDataSource } from './config/database';
+import authRoutes from './routes/auth.route';
 
 dotenv.config();
 
@@ -15,9 +16,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Routes
+app.use('/api/auth', authRoutes);
+
 // Health check route
 app.get('/api/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok', message: 'Server is running healthily' });
+  res.status(200).json({ success: true, data: null, message: 'Server is running healthily' });
 });
 
 // Error handling middleware should be the last middleware
