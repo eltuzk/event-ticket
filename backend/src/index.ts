@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import { errorHandler } from './middlewares/error';
 import { AppDataSource } from './config/database';
 import authRoutes from './routes/auth.route';
+import categoryRoutes from './routes/category.route';
+import eventRoutes from './routes/event.route';
 
 dotenv.config();
 
@@ -18,6 +20,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/events', eventRoutes);
 
 // Health check route
 app.get('/api/health', (req: Request, res: Response) => {
