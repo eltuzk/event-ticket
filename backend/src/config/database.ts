@@ -12,7 +12,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || 'event_ticket',
   synchronize: false, // Don't use synchronize in production! Use migrations.
   logging: true,
-  entities: ['src/models/**/*.ts'],
+  entities: ['src/entities/**/*.ts'],
   migrations: ['src/migrations/**/*.ts'],
   subscribers: [],
 });
