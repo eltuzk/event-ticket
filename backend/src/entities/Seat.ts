@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { SeatMap } from './SeatMap';
 import { Ticket } from './Ticket';
 
@@ -39,8 +39,8 @@ export class Seat {
   })
   status!: SeatStatus;
 
-  @OneToMany(() => Ticket, (ticket) => ticket.seat)
-  tickets!: Ticket[];
+  @OneToOne(() => Ticket, (ticket) => ticket.seat)
+  ticket?: Ticket;
 
   @CreateDateColumn()
   createdAt!: Date;

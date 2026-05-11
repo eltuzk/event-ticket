@@ -17,7 +17,7 @@ export class Ticket {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToOne(() => Seat, (seat) => seat.tickets)
+  @OneToOne(() => Seat, (seat) => seat.ticket)
   @JoinColumn({ name: 'seatId' })
   seat!: Seat;
 

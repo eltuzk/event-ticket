@@ -6,6 +6,9 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate src/migrations/init -d src/config/database.ts",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/config/database.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/config/database.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

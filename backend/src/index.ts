@@ -9,6 +9,8 @@ import categoryRoutes from './routes/category.route';
 import eventRoutes from './routes/event.route';
 import seatMapRoutes from './routes/seatmap.route';
 import seatRoutes, { seatItemRouter } from './routes/seat.route';
+import ticketRoutes from './routes/ticket.route';
+import paymentRoutes from './routes/payment.route';
 
 dotenv.config();
 
@@ -27,6 +29,8 @@ app.use('/api/events', eventRoutes);
 app.use('/api/events/:eventId/seatmap', seatMapRoutes);
 app.use('/api/seatmaps/:seatMapId/seats', seatRoutes);
 app.use('/api/seats', seatItemRouter);
+app.use('/api/tickets', ticketRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Health check route
 app.get('/api/health', (req: Request, res: Response) => {
