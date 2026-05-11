@@ -11,6 +11,7 @@ import seatMapRoutes from './routes/seatmap.route';
 import seatRoutes, { seatItemRouter } from './routes/seat.route';
 import ticketRoutes from './routes/ticket.route';
 import paymentRoutes from './routes/payment.route';
+import qrcodeRoutes from './routes/qrcode.route';
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.use('/api/seatmaps/:seatMapId/seats', seatRoutes);
 app.use('/api/seats', seatItemRouter);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/qrcodes', qrcodeRoutes);
 
 // Health check route
 app.get('/api/health', (req: Request, res: Response) => {
