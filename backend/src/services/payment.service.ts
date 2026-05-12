@@ -7,11 +7,11 @@ import { Seat, SeatStatus } from '../entities/Seat';
 const paymentRepository = AppDataSource.getRepository(Payment);
 
 export class PaymentService {
-  static async createVNPayUrl(ticketId: string, userId: string, amount: number, ipAddr: string) {
+  static async createVNPayUrl(ticketIds: string[], userId: string, amount: number, ipAddr: string) {
     return await AppDataSource.transaction(async (transactionalEntityManager) => {
-      // 1. Create Payment record
+      // 1. Create Payment record linked to the first ticket
       const payment = paymentRepository.create({
-        ticketId,
+        ticketId: ticketIds[0],
         userId,
         amount,
         status: PaymentStatus.PENDING,
@@ -28,6 +28,9 @@ export class PaymentService {
       const date = new Date();
       const createDate = this.formatDate(date);
       
+      // Store all ticket IDs in the OrderInfo separated by commas
+      const orderInfo = `TICKETS:${ticketIds.join(',')}`;
+
       let vnp_Params: any = {
         vnp_Version: '2.1.0',
         vnp_Command: 'pay',
@@ -35,7 +38,7 @@ export class PaymentService {
         vnp_Locale: 'vn',
         vnp_CurrCode: 'VND',
         vnp_TxnRef: savedPayment.id,
-        vnp_OrderInfo: `Thanh toan ve cho ve: ${ticketId}`,
+        vnp_OrderInfo: orderInfo,
         vnp_OrderType: 'other',
         vnp_Amount: amount * 100,
         vnp_ReturnUrl: returnUrl,
@@ -46,7 +49,7 @@ export class PaymentService {
       // Sort params
       vnp_Params = this.sortObject(vnp_Params);
       
-      const signData = this.buildQueryString(vnp_Params);
+      const signData = this.buildQueryString(vnp_Params, true);
       const hmac = crypto.createHmac('sha512', secretKey as string);
       const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
       
@@ -67,47 +70,80 @@ export class PaymentService {
     const sortedParams = this.sortObject(vnp_Params);
     const secretKey = process.env.VNPAY_HASH_SECRET;
 
-    const signData = this.buildQueryString(sortedParams);
+    const signData = this.buildQueryString(sortedParams, true);
     const hmac = crypto.createHmac('sha512', secretKey as string);
     const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
     const paymentId = vnp_Params['vnp_TxnRef'];
-    const responseCode = vnp_Params['vnp_ResponseCode'];
+    const responseCode = String(vnp_Params['vnp_ResponseCode']);
+    const orderInfo = vnp_Params['vnp_OrderInfo'] || '';
 
-    if (secureHash === signed) {
+    console.log(`[VNPay] Verification for Payment ${paymentId}:`);
+    console.log(` - ResponseCode: ${responseCode}`);
+    console.log(` - SignData: ${signData}`);
+    console.log(` - Received Hash: ${secureHash}`);
+    console.log(` - Calculated Hash: ${signed}`);
+
+    if (secureHash && signed && secureHash.toLowerCase() === signed.toLowerCase()) {
       return await AppDataSource.transaction(async (transactionalEntityManager) => {
         const payment = await transactionalEntityManager.findOne(Payment, {
           where: { id: paymentId },
-          relations: ['ticket', 'ticket.seat'],
         });
 
         if (!payment) throw new Error('Payment not found');
 
-        if (responseCode === '00') {
+        // Extract ticket IDs from OrderInfo (Express already decoded this)
+        let ticketIds: string[] = [];
+        if (orderInfo.startsWith('TICKETS:')) {
+          ticketIds = orderInfo.replace('TICKETS:', '').split(',');
+        } else {
+          ticketIds = [payment.ticketId];
+        }
+
+        if (responseCode === '00' || responseCode === '0') {
           // Success
           payment.status = PaymentStatus.SUCCESS;
-          payment.ticket.status = TicketStatus.CONFIRMED;
-          if (payment.ticket.seat) {
-            payment.ticket.seat.status = SeatStatus.SOLD;
+          console.log(`[VNPay] Confirming ${ticketIds.length} tickets for payment ${paymentId}`);
+          
+          for (const tid of ticketIds) {
+            const ticket = await transactionalEntityManager.findOne(Ticket, {
+              where: { id: tid },
+              relations: ['seat'],
+            });
+            if (ticket) {
+              ticket.status = TicketStatus.CONFIRMED;
+              await transactionalEntityManager.save(ticket);
+              if (ticket.seat) {
+                ticket.seat.status = SeatStatus.SOLD;
+                await transactionalEntityManager.save(ticket.seat);
+              }
+            }
           }
         } else {
           // Failed
+          console.log(`[VNPay] Payment ${paymentId} failed with code ${responseCode}. Cancelling tickets.`);
           payment.status = PaymentStatus.FAILED;
-          payment.ticket.status = TicketStatus.CANCELLED;
-          if (payment.ticket.seat) {
-            payment.ticket.seat.status = SeatStatus.AVAILABLE;
+          for (const tid of ticketIds) {
+            const ticket = await transactionalEntityManager.findOne(Ticket, {
+              where: { id: tid },
+              relations: ['seat'],
+            });
+            if (ticket) {
+              ticket.status = TicketStatus.CANCELLED;
+              await transactionalEntityManager.save(ticket);
+              if (ticket.seat) {
+                ticket.seat.status = SeatStatus.AVAILABLE;
+                await transactionalEntityManager.save(ticket.seat);
+              }
+            }
           }
         }
 
         await transactionalEntityManager.save(payment);
-        await transactionalEntityManager.save(payment.ticket);
-        if (payment.ticket.seat) {
-          await transactionalEntityManager.save(payment.ticket.seat);
-        }
-
-        return { success: responseCode === '00', paymentId };
+        return { success: responseCode === '00' || responseCode === '0', paymentId };
       });
     } else {
+      console.error('[VNPay] Signature mismatch for payment', paymentId);
       return { success: false, message: 'Invalid signature' };
     }
   }
@@ -123,8 +159,9 @@ export class PaymentService {
 
   private static buildQueryString(params: any, encode: boolean = false) {
     return Object.keys(params)
+      .filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '')
       .map((key) => {
-        const value = encode ? encodeURIComponent(params[key]).replace(/%20/g, '+') : params[key];
+        const value = encode ? encodeURIComponent(params[key].toString()).replace(/%20/g, '+') : params[key].toString();
         return `${key}=${value}`;
       })
       .join('&');

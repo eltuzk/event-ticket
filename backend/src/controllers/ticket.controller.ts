@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { TicketService } from '../services/ticket.service';
 
 const createTicketSchema = z.object({
-  seatId: z.string().uuid(),
+  seatIds: z.array(z.string().uuid()),
   eventId: z.string().uuid(),
 });
 
@@ -37,15 +37,15 @@ export class TicketController {
   static async create(req: any, res: Response, next: NextFunction) {
     try {
       const validatedData = createTicketSchema.parse(req.body);
-      const ticket = await TicketService.create(
+      const tickets = await TicketService.create(
         req.user.id,
-        validatedData.seatId,
+        validatedData.seatIds,
         validatedData.eventId
       );
       res.status(201).json({
         success: true,
-        data: ticket,
-        message: 'Ticket created successfully',
+        data: tickets,
+        message: `${tickets.length} vé đã được đặt thành công`,
       });
     } catch (error) {
       next(error);

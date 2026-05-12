@@ -8,8 +8,8 @@ interface ApiResponse<T> {
 }
 
 export const ticketService = {
-  async create(seatId: string, eventId: string): Promise<Ticket> {
-    const response = await api.post<ApiResponse<Ticket>>('/api/tickets', { seatId, eventId });
+  async create(seatIds: string[], eventId: string): Promise<Ticket[]> {
+    const response = await api.post<ApiResponse<Ticket[]>>('/api/tickets', { seatIds, eventId });
     return response.data.data;
   },
 
@@ -24,8 +24,6 @@ export const ticketService = {
 
   async getQRCode(ticketId: string): Promise<string> {
     const response = await api.post<ApiResponse<{ qrCode: string }>>('/api/qrcodes/generate', { ticketId });
-    // result from QRCodeService.generate is likely { qrCode: "base64..." } or just the string
-    // Let's assume it returns { qrCode: "..." } based on common patterns
     return response.data.data.qrCode;
   },
 };

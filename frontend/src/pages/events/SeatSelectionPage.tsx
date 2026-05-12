@@ -13,7 +13,7 @@ const SeatSelectionPage: React.FC = () => {
   const navigate = useNavigate();
   const [event, setEvent] = useState<Event | null>(null);
   const [seatMap, setSeatMap] = useState<SeatMap | null>(null);
-  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBooking, setIsBooking] = useState(false);
 
@@ -42,20 +42,36 @@ const SeatSelectionPage: React.FC = () => {
 
   const handleSeatClick = (seat: Seat) => {
     if (seat.status !== 'AVAILABLE') return;
-    setSelectedSeat(selectedSeat?.id === seat.id ? null : seat);
+    
+    setSelectedSeats(prev => {
+      const isAlreadySelected = prev.find(s => s.id === seat.id);
+      if (isAlreadySelected) {
+        return prev.filter(s => s.id !== seat.id);
+      } else {
+        if (prev.length >= 10) {
+          toast.warning('Bạn chỉ có thể chọn tối đa 10 ghế.');
+          return prev;
+        }
+        return [...prev, seat];
+      }
+    });
   };
 
+  const totalPrice = selectedSeats.reduce((sum, seat) => sum + Number(seat.price), 0);
+
   const handleBooking = async () => {
-    if (!selectedSeat || !id) return;
+    if (selectedSeats.length === 0 || !id) return;
 
     setIsBooking(true);
     try {
-      // 1. Create Ticket
-      const ticket = await ticketService.create(selectedSeat.id, id);
-      toast.success('Đã giữ chỗ thành công! Đang chuyển đến trang thanh toán...');
+      // 1. Create Tickets (bulk)
+      const seatIds = selectedSeats.map(s => s.id);
+      const tickets = await ticketService.create(seatIds, id);
+      toast.success(`Đã giữ ${tickets.length} chỗ thành công! Đang chuyển đến trang thanh toán...`);
 
-      // 2. Create Payment URL
-      const { paymentUrl } = await paymentService.createPaymentUrl(ticket.id, selectedSeat.price);
+      // 2. Create Payment URL for all tickets
+      const ticketIds = tickets.map(t => t.id);
+      const { paymentUrl } = await paymentService.createPaymentUrl(ticketIds, totalPrice);
       
       // 3. Redirect to VNPay
       window.location.href = paymentUrl;
@@ -115,7 +131,7 @@ const SeatSelectionPage: React.FC = () => {
                 }}
               >
                 {seatMap.seats.sort((a, b) => (a.row - b.row) || (a.column - b.column)).map((seat) => {
-                  const isSelected = selectedSeat?.id === seat.id;
+                  const isSelected = selectedSeats.some(s => s.id === seat.id);
                   const isAvailable = seat.status === 'AVAILABLE';
                   
                   return (
@@ -126,14 +142,14 @@ const SeatSelectionPage: React.FC = () => {
                       className={`
                         w-10 h-10 rounded-xl flex items-center justify-center transition-all relative group
                         ${isAvailable ? 'cursor-pointer hover:scale-110 active:scale-95' : 'cursor-not-allowed opacity-50'}
-                        ${isSelected ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 
+                        ${isSelected ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 scale-105' : 
                           isAvailable ? 'bg-indigo-50 text-indigo-600 border border-indigo-100 hover:border-indigo-400' : 
                           'bg-slate-100 text-slate-400'}
                       `}
                       title={`${seat.label} - ${seat.price.toLocaleString('vi-VN')}đ`}
                     >
                       <Armchair size={18} className={isSelected ? 'animate-bounce' : ''} />
-                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
                         {seat.label}
                       </span>
                     </button>
@@ -172,29 +188,42 @@ const SeatSelectionPage: React.FC = () => {
             <h3 className="font-bold text-slate-900 text-lg">Thông tin đặt vé</h3>
             
             <div className="space-y-4">
-              <div className="flex justify-between items-center py-3 border-b border-slate-100">
-                <span className="text-slate-500">Ghế đã chọn:</span>
-                <span className="font-bold text-slate-900">
-                  {selectedSeat ? selectedSeat.label : 'Chưa chọn'}
-                </span>
+              <div className="py-3 border-b border-slate-100">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-slate-500 text-sm">Ghế đã chọn:</span>
+                  <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
+                    {selectedSeats.length} ghế
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedSeats.length > 0 ? (
+                    selectedSeats.map(s => (
+                      <span key={s.id} className="text-xs font-bold text-slate-900 bg-slate-100 px-2 py-1 rounded-md">
+                        {s.label}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-slate-400 italic">Chưa chọn ghế</span>
+                  )}
+                </div>
               </div>
-              <div className="flex justify-between items-center py-3 border-b border-slate-100">
-                <span className="text-slate-500">Giá vé:</span>
-                <span className="font-bold text-indigo-600 text-xl">
-                  {selectedSeat ? `${selectedSeat.price.toLocaleString('vi-VN')}đ` : '0đ'}
+              <div className="flex justify-between items-center py-3">
+                <span className="text-slate-500">Tổng cộng:</span>
+                <span className="font-bold text-indigo-600 text-2xl">
+                  {totalPrice.toLocaleString('vi-VN')}đ
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
-              <div className="flex gap-2 text-xs text-slate-400 bg-slate-50 p-3 rounded-2xl">
-                <CheckCircle2 size={14} className="shrink-0 text-green-500" />
-                <p>Ghế của bạn sẽ được giữ trong 10 phút sau khi nhấn đặt vé.</p>
+              <div className="flex gap-2 text-[10px] text-slate-400 bg-slate-50 p-3 rounded-2xl leading-relaxed">
+                <CheckCircle2 size={12} className="shrink-0 text-green-500" />
+                <p>Mỗi tài khoản được đặt tối đa 10 ghế cho mỗi giao dịch.</p>
               </div>
               
               <button
                 onClick={handleBooking}
-                disabled={!selectedSeat || isBooking}
+                disabled={selectedSeats.length === 0 || isBooking}
                 className="w-full flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-indigo-100 active:scale-95"
               >
                 {isBooking ? (
@@ -202,16 +231,16 @@ const SeatSelectionPage: React.FC = () => {
                 ) : (
                   <>
                     <CreditCard size={20} />
-                    Thanh toán ngay
+                    Đặt {selectedSeats.length > 0 ? selectedSeats.length : ''} vé ngay
                   </>
                 )}
               </button>
             </div>
 
             <div className="pt-4 flex justify-center gap-4 opacity-30 grayscale">
-              <img src="https://vnpay.vn/wp-content/uploads/2020/07/Logo-VNPAYQR-update.png" alt="VNPay" className="h-6 object-contain" />
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/2560px-Visa_Inc._logo.svg.png" alt="Visa" className="h-6 object-contain" />
-              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png" alt="Mastercard" className="h-6 object-contain" />
+              <img src="https://vnpay.vn/wp-content/uploads/2020/07/Logo-VNPAYQR-update.png" alt="VNPay" className="h-5 object-contain" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Visa_Inc._logo.svg/2560px-Visa_Inc._logo.svg.png" alt="Visa" className="h-5 object-contain" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png" alt="Mastercard" className="h-5 object-contain" />
             </div>
           </div>
         </div>

@@ -9,7 +9,9 @@ const PaymentReturnPage: React.FC = () => {
 
   useEffect(() => {
     const responseCode = searchParams.get('vnp_ResponseCode');
-    if (responseCode === '00') {
+    const backendStatus = searchParams.get('status');
+    
+    if (responseCode === '00' || backendStatus === 'success') {
       setStatus('SUCCESS');
     } else {
       setStatus('FAILED');

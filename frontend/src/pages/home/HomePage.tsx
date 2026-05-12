@@ -18,6 +18,9 @@ const HomePage: React.FC = () => {
     fetchCategories();
     fetchEvents();
   }, []);
+  useEffect(() => {
+    fetchEvents();
+  }, [selectedCategory]);
 
   const fetchCategories = async () => {
     try {
@@ -112,15 +115,6 @@ const HomePage: React.FC = () => {
             );
           })}
         </div>
-        
-        {selectedCategory && (
-          <button 
-            onClick={fetchEvents}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-          >
-            Áp dụng bộ lọc
-          </button>
-        )}
       </div>
 
       {/* Error Message */}

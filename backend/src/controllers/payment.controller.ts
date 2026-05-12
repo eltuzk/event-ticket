@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { PaymentService } from '../services/payment.service';
 
 const createPaymentUrlSchema = z.object({
-  ticketId: z.string().uuid(),
+  ticketIds: z.array(z.string().uuid()),
   amount: z.number().positive(),
 });
 
@@ -18,7 +18,7 @@ export class PaymentController {
         req.connection.socket.remoteAddress || '127.0.0.1';
 
       const paymentUrl = await PaymentService.createVNPayUrl(
-        validatedData.ticketId,
+        validatedData.ticketIds,
         req.user.id,
         validatedData.amount,
         ipAddr as string
@@ -41,7 +41,7 @@ export class PaymentController {
       // Redirect to frontend with status
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const status = result.success ? 'success' : 'failed';
-      res.redirect(`${frontendUrl}/payment-result?status=${status}&paymentId=${result.paymentId || ''}`);
+      res.redirect(`${frontendUrl}/payment/return?status=${status}&paymentId=${result.paymentId || ''}`);
     } catch (error) {
       next(error);
     }

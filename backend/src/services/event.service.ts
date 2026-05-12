@@ -7,14 +7,22 @@ const eventRepository = AppDataSource.getRepository(Event);
 export class EventService {
   static async getAll(filters: { status?: EventStatus; categoryId?: string; search?: string }) {
     const { status, categoryId, search } = filters;
-    const query: any = {};
+    const baseCondition: any = {};
+    if (status) baseCondition.status = status;
+    if (categoryId) baseCondition.categoryId = categoryId;
 
-    if (status) query.status = status;
-    if (categoryId) query.categoryId = categoryId;
-    if (search) query.title = Like(`%${search}%`);
+    let whereConditions: any = baseCondition;
+
+    if (search) {
+      whereConditions = [
+        { ...baseCondition, title: Like(`%${search}%`) },
+        { ...baseCondition, location: Like(`%${search}%`) },
+        { ...baseCondition, category: { name: Like(`%${search}%`) } },
+      ];
+    }
 
     return await eventRepository.find({
-      where: query,
+      where: whereConditions,
       relations: ['category', 'organizer'],
       order: { startDate: 'ASC' },
     });

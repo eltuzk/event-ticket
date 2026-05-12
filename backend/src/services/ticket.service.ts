@@ -25,37 +25,42 @@ export class TicketService {
     });
   }
 
-  static async create(userId: string, seatId: string, eventId: string) {
+  static async create(userId: string, seatIds: string[], eventId: string) {
     return await AppDataSource.transaction(async (transactionalEntityManager) => {
-      // Check seat status
-      const seat = await transactionalEntityManager.findOne(Seat, {
-        where: { id: seatId },
-        lock: { mode: 'pessimistic_write' }, // Prevent race conditions
-      });
+      const tickets: Ticket[] = [];
 
-      if (!seat) {
-        throw new Error('Seat not found');
+      for (const seatId of seatIds) {
+        // Check seat status with pessimistic lock to prevent concurrent booking
+        const seat = await transactionalEntityManager.findOne(Seat, {
+          where: { id: seatId },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        if (!seat) {
+          throw new Error(`Seat with ID ${seatId} not found`);
+        }
+
+        if (seat.status !== SeatStatus.AVAILABLE) {
+          throw new Error(`Ghế ${seat.label} đã có người đặt, vui lòng chọn ghế khác`);
+        }
+
+        // Create ticket
+        const ticket = ticketRepository.create({
+          userId,
+          seatId,
+          eventId,
+          status: TicketStatus.PENDING,
+        });
+
+        const savedTicket = await transactionalEntityManager.save(ticket);
+        tickets.push(savedTicket);
+
+        // Update seat status
+        seat.status = SeatStatus.RESERVED;
+        await transactionalEntityManager.save(seat);
       }
 
-      if (seat.status !== SeatStatus.AVAILABLE) {
-        throw new Error('Seat is not available');
-      }
-
-      // Create ticket
-      const ticket = ticketRepository.create({
-        userId,
-        seatId,
-        eventId,
-        status: TicketStatus.PENDING,
-      });
-
-      const savedTicket = await transactionalEntityManager.save(ticket);
-
-      // Update seat status
-      seat.status = SeatStatus.RESERVED;
-      await transactionalEntityManager.save(seat);
-
-      return savedTicket;
+      return tickets;
     });
   }
 

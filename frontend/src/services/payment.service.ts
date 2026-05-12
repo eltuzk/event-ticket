@@ -7,9 +7,9 @@ interface ApiResponse<T> {
 }
 
 export const paymentService = {
-  async createPaymentUrl(ticketId: string, amount: number): Promise<{ paymentUrl: string }> {
+  async createPaymentUrl(ticketIds: string[], amount: number): Promise<{ paymentUrl: string }> {
     const response = await api.post<ApiResponse<{ paymentUrl: string }>>('/api/payments/create-payment-url', {
-      ticketId,
+      ticketIds,
       amount,
     });
     return response.data.data;
