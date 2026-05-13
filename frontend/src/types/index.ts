@@ -64,7 +64,7 @@ export interface Ticket {
   seatId: string;
   eventId: string;
   userId: string;
-  status: 'PENDING' | 'PAID' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'USED';
   event?: Event;
   seat?: Seat;
 }

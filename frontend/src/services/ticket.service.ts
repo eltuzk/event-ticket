@@ -23,7 +23,7 @@ export const ticketService = {
   },
 
   async getQRCode(ticketId: string): Promise<string> {
-    const response = await api.post<ApiResponse<{ qrCode: string }>>('/api/qrcodes/generate', { ticketId });
-    return response.data.data.qrCode;
+    const response = await api.post<ApiResponse<{ qrCode: any; qrImage: string }>>('/api/qrcodes/generate', { ticketId });
+    return response.data.data.qrImage;
   },
 };

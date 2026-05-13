@@ -10,6 +10,13 @@ const verifySchema = z.object({
   code: z.string(),
 });
 
+const syncUpSchema = z.object({
+  scans: z.array(z.object({
+    code: z.string(),
+    scannedAt: z.string().optional()
+  }))
+});
+
 export class QRCodeController {
   static async generate(req: any, res: Response, next: NextFunction) {
     try {
@@ -35,6 +42,33 @@ export class QRCodeController {
         success: true,
         data: ticket,
         message: 'Ticket verified successfully. Entry granted!',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async syncDown(req: Request, res: Response, next: NextFunction) {
+    try {
+      const data = await QRCodeService.getAllForSync();
+      res.status(200).json({
+        success: true,
+        data: data,
+        message: 'Sync down successful',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async syncUp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const validatedData = syncUpSchema.parse(req.body);
+      const data = await QRCodeService.syncScans(validatedData.scans);
+      res.status(200).json({
+        success: true,
+        data: data,
+        message: 'Sync up successful',
       });
     } catch (error) {
       next(error);

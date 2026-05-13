@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ticketService } from '../../services/ticket.service';
+import { paymentService } from '../../services/payment.service';
 import type { Ticket } from '../../types';
 import { toast } from 'sonner';
 import { QrCode, Calendar, MapPin, Armchair, Ticket as TicketIcon, X } from 'lucide-react';
@@ -48,6 +49,31 @@ const MyTicketsPage: React.FC = () => {
     setQrCodeData(null);
   };
 
+  const handleContinuePayment = async (ticket: Ticket) => {
+    if (!ticket.seat) return;
+    
+    try {
+      const { paymentUrl } = await paymentService.createPaymentUrl([ticket.id], Number(ticket.seat.price));
+      window.location.href = paymentUrl;
+    } catch (error) {
+      console.error('Failed to create payment URL', error);
+      toast.error('Không thể khởi tạo thanh toán. Vui lòng thử lại.');
+    }
+  };
+
+  const handleCancel = async (ticketId: string) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đặt vé này?')) return;
+    
+    try {
+      await ticketService.cancel(ticketId);
+      toast.success('Hủy vé thành công');
+      fetchTickets();
+    } catch (error) {
+      console.error('Failed to cancel ticket', error);
+      toast.error('Không thể hủy vé. Vui lòng thử lại.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto py-12 space-y-6 animate-pulse">
@@ -78,7 +104,7 @@ const MyTicketsPage: React.FC = () => {
               <div className="flex flex-col md:flex-row">
                 {/* Status Bar (Mobile) */}
                 <div className={`md:hidden h-2 w-full ${
-                  ticket.status === 'PAID' ? 'bg-green-500' : 
+                  ticket.status === 'CONFIRMED' || ticket.status === 'USED' ? 'bg-green-500' : 
                   ticket.status === 'PENDING' ? 'bg-yellow-500' : 'bg-red-500'
                 }`} />
 
@@ -87,10 +113,11 @@ const MyTicketsPage: React.FC = () => {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        ticket.status === 'PAID' ? 'bg-green-100 text-green-700' : 
+                        ticket.status === 'CONFIRMED' || ticket.status === 'USED' ? 'bg-green-100 text-green-700' : 
                         ticket.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
                       }`}>
-                        {ticket.status === 'PAID' ? 'Đã thanh toán' : 
+                        {ticket.status === 'CONFIRMED' ? 'Đã xác nhận' : 
+                         ticket.status === 'USED' ? 'Đã sử dụng' :
                          ticket.status === 'PENDING' ? 'Chờ thanh toán' : 'Đã hủy'}
                       </span>
                     </div>
@@ -118,7 +145,7 @@ const MyTicketsPage: React.FC = () => {
 
                 {/* Right Side: Action */}
                 <div className="w-full md:w-48 bg-slate-50 border-t md:border-t-0 md:border-l border-slate-200 p-6 flex items-center justify-center">
-                  {ticket.status === 'PAID' ? (
+                  {ticket.status === 'CONFIRMED' || ticket.status === 'USED' ? (
                     <button 
                       onClick={() => handleShowQR(ticket.id)}
                       className="flex items-center gap-2 bg-white hover:bg-indigo-600 hover:text-white text-indigo-600 border border-indigo-200 px-6 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-sm"
@@ -127,9 +154,20 @@ const MyTicketsPage: React.FC = () => {
                       Xem QR
                     </button>
                   ) : ticket.status === 'PENDING' ? (
-                    <button className="text-sm font-bold text-indigo-600 hover:underline">
-                      Tiếp tục thanh toán
-                    </button>
+                    <div className="flex flex-col gap-2 w-full">
+                      <button 
+                        onClick={() => handleContinuePayment(ticket)}
+                        className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-100 w-full"
+                      >
+                        Tiếp tục thanh toán
+                      </button>
+                      <button 
+                        onClick={() => handleCancel(ticket.id)}
+                        className="flex items-center justify-center gap-2 bg-white hover:bg-red-50 text-red-600 border border-red-100 px-6 py-3 rounded-2xl font-bold transition-all active:scale-95 w-full"
+                      >
+                        Hủy đặt vé
+                      </button>
+                    </div>
                   ) : (
                     <span className="text-sm text-slate-400 font-medium italic">Vé không hợp lệ</span>
                   )}

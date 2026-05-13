@@ -14,4 +14,7 @@ router.post('/generate', authorizeRoles(UserRole.CUSTOMER), QRCodeController.gen
 // Gate staff and Admin can verify QR codes
 router.post('/verify', authorizeRoles(UserRole.GATE_STAFF, UserRole.ADMIN), QRCodeController.verify);
 
+router.get('/sync', authorizeRoles(UserRole.GATE_STAFF, UserRole.ADMIN), QRCodeController.syncDown);
+router.post('/sync', authorizeRoles(UserRole.GATE_STAFF, UserRole.ADMIN), QRCodeController.syncUp);
+
 export default router;

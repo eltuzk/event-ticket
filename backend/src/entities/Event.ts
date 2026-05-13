@@ -58,6 +58,9 @@ export class Event {
   @OneToMany(() => Ticket, (ticket) => ticket.event)
   tickets!: Ticket[];
 
+  @Column({ nullable: true })
+  imageUrl?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

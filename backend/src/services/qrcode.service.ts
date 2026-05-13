@@ -1,4 +1,5 @@
 import QRCodeLib from 'qrcode';
+import { In } from 'typeorm';
 import crypto from 'crypto';
 import { AppDataSource } from '../config/database';
 import { QRCode } from '../entities/QRCode';
@@ -77,6 +78,40 @@ export class QRCodeService {
       await transactionalEntityManager.save(qrRecord.ticket);
 
       return qrRecord.ticket;
+    });
+  }
+
+  static async getAllForSync() {
+    return await qrcodeRepository.find({
+      relations: ['ticket'],
+      where: {
+        ticket: {
+          status: In([TicketStatus.CONFIRMED, TicketStatus.USED])
+        }
+      }
+    });
+  }
+
+  static async syncScans(scans: { code: string, scannedAt?: string }[]) {
+    return await AppDataSource.transaction(async (transactionalEntityManager) => {
+      let syncedCount = 0;
+      for (const scan of scans) {
+        const qrRecord = await transactionalEntityManager.findOne(QRCode, {
+          where: { code: scan.code },
+          relations: ['ticket'],
+        });
+        
+        if (qrRecord && !qrRecord.isScanned) {
+          qrRecord.isScanned = true;
+          qrRecord.scannedAt = scan.scannedAt ? new Date(scan.scannedAt) : new Date();
+          qrRecord.ticket.status = TicketStatus.USED;
+          
+          await transactionalEntityManager.save(qrRecord);
+          await transactionalEntityManager.save(qrRecord.ticket);
+          syncedCount++;
+        }
+      }
+      return { syncedCount };
     });
   }
 }
