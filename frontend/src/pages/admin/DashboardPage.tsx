@@ -15,6 +15,7 @@ import {
   Ticket, 
   DollarSign,
   ArrowUpRight,
+  ArrowDownRight,
   ChevronRight
 } from 'lucide-react';
 import { reportService, type OverallStats } from '../../services/report.service';
@@ -96,10 +97,21 @@ const DashboardPage: React.FC = () => {
         <div className="lg:col-span-2 bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-slate-900">Doanh thu theo thời gian</h3>
-            <div className="flex items-center gap-2 text-xs font-bold text-green-500 bg-green-50 px-3 py-1 rounded-full">
-              <ArrowUpRight size={14} />
-              +12% so với tháng trước
-            </div>
+            {stats && (
+              <div className={`flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-full ${
+                (stats.revenueGrowthPercentage ?? 0) >= 0 
+                  ? 'text-green-500 bg-green-50' 
+                  : 'text-rose-500 bg-rose-50'
+              }`}>
+                {(stats.revenueGrowthPercentage ?? 0) >= 0 ? (
+                  <ArrowUpRight size={14} />
+                ) : (
+                  <ArrowDownRight size={14} />
+                )}
+                {(stats.revenueGrowthPercentage ?? 0) >= 0 ? '+' : ''}
+                {stats.revenueGrowthPercentage}% so với 30 ngày trước
+              </div>
+            )}
           </div>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">

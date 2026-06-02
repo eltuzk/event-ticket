@@ -41,7 +41,7 @@ export class PaymentController {
       // Redirect to frontend with status
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const status = result.success ? 'success' : 'failed';
-      res.redirect(`${frontendUrl}/payment/return?status=${status}&paymentId=${result.paymentId || ''}`);
+      res.redirect(`${frontendUrl}/payment/return?status=${status}&paymentId=${(result as any).paymentId || ''}`);
     } catch (error) {
       next(error);
     }

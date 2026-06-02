@@ -13,6 +13,7 @@ export interface OverallStats {
   totalUsers: number;
   revenueByDate: Array<{ date: string; amount: number }>;
   topEvents: Array<{ id: string; title: string; revenue: number; ticketsSold: number }>;
+  revenueGrowthPercentage?: number;
 }
 
 export interface EventReport {
